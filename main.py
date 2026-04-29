@@ -8,6 +8,8 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi import Request
+from fastapi.middleware.cors import CORSMiddleware
+import base64
 import uvicorn
 import sqlite3
 import json
@@ -17,6 +19,16 @@ import hashlib
 
 # ─── Configuración ───
 app = FastAPI(title="InvoiceFlow", version="1.0.0")
+
+# CORS para que el bot de WhatsApp pueda conectarse
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 BASE_DIR = os.path.dirname(__file__)
 
@@ -64,64 +76,6 @@ def get_db():
 def calcular_hash(contenido: bytes) -> str:
     return hashlib.md5(contenido).hexdigest()
 
-# ─── Endpoints ───
-
-@app.get("/", response_class=HTMLResponse)
-async def dashboard():
-    html_path = os.path.join(BASE_DIR, "templates", "dashboard.html")
-    with open(html_path, "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
-
-@app.post("/api/invoices/upload")
-async def upload_invoice(file: UploadFile = File(...)):
-    """Recibe imagen de factura, la procesa y guarda"""
-    contenido = await file.read()
-    hash_img = calcular_hash(contenido)
-    
-    # Guardar imagen
-    filename = f"{hash_img}.jpg"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(contenido)
-    
-    # Aquí iría DeepSeek Vision para extraer datos
-    # Por ahora simulamos extracción
-    datos = extraer_factura_simulada(filename)
-    
-    conn = get_db()
-    try:
-        conn.execute("""
-            INSERT INTO invoices (proveedor, fecha, total, categoria, numero_factura, tipo_gasto, fecha_registro, hash_imagen)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            datos["proveedor"],
-            datos["fecha"],
-            datos["total"],
-            datos["categoria"],
-            datos["numero_factura"],
-            datos["tipo_gasto"],
-            datetime.now().isoformat(),
-            hash_img
-        ))
-        conn.commit()
-        
-        # Análisis inteligente
-        analisis = analizar_gasto(datos)
-        
-        return JSONResponse({
-            "status": "ok",
-            "mensaje": f"✅ Factura de {datos['proveedor']} registrada",
-            "datos": datos,
-            "analisis": analisis
-        })
-    except sqlite3.IntegrityError:
-        return JSONResponse({
-            "status": "duplicado",
-            "mensaje": "⚠️ Esta factura ya fue registrada anteriormente"
-        })
-    finally:
-        conn.close()
-
 def extraer_factura_simulada(filename: str) -> dict:
     """Simula la extracción de datos (reemplazar con DeepSeek Vision)"""
     import random
@@ -142,7 +96,6 @@ def analizar_gasto(datos: dict) -> dict:
     """Analiza el gasto y devuelve insights"""
     conn = get_db()
     
-    # Gastos del mes actual
     mes_actual = datetime.now().strftime("%Y-%m")
     cursor = conn.execute("""
         SELECT COUNT(*) as total, SUM(total) as suma 
@@ -151,14 +104,12 @@ def analizar_gasto(datos: dict) -> dict:
     """, (mes_actual,))
     resumen_mes = dict(cursor.fetchone())
     
-    # Gastos similares (mismo proveedor)
     cursor = conn.execute("""
         SELECT COUNT(*) as count FROM invoices 
         WHERE proveedor = ? AND id != (SELECT MAX(id) FROM invoices)
     """, (datos["proveedor"],))
     gastos_previos = dict(cursor.fetchone())
     
-    # Detección de duplicados potenciales
     cursor = conn.execute("""
         SELECT COUNT(*) as count FROM invoices 
         WHERE total = ? AND proveedor = ? AND id != (SELECT MAX(id) FROM invoices)
@@ -181,6 +132,79 @@ def analizar_gasto(datos: dict) -> dict:
         "insights": insights
     }
 
+def procesar_y_guardar_factura(contenido: bytes) -> dict:
+    """Procesa una imagen de factura y la guarda en la BD"""
+    hash_img = calcular_hash(contenido)
+    
+    filename = f"{hash_img}.jpg"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(contenido)
+    
+    datos = extraer_factura_simulada(filename)
+    
+    conn = get_db()
+    try:
+        conn.execute("""
+            INSERT INTO invoices (proveedor, fecha, total, categoria, numero_factura, tipo_gasto, fecha_registro, hash_imagen)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            datos["proveedor"],
+            datos["fecha"],
+            datos["total"],
+            datos["categoria"],
+            datos["numero_factura"],
+            datos["tipo_gasto"],
+            datetime.now().isoformat(),
+            hash_img
+        ))
+        conn.commit()
+        
+        analisis = analizar_gasto(datos)
+        
+        return {
+            "status": "ok",
+            "mensaje": f"✅ Factura de {datos['proveedor']} registrada",
+            "datos": datos,
+            "analisis": analisis
+        }
+    except sqlite3.IntegrityError:
+        return {
+            "status": "duplicado",
+            "mensaje": "⚠️ Esta factura ya fue registrada anteriormente"
+        }
+    finally:
+        conn.close()
+
+# ─── Endpoints ───
+
+@app.get("/", response_class=HTMLResponse)
+async def dashboard():
+    html_path = os.path.join(BASE_DIR, "templates", "dashboard.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
+
+@app.post("/api/invoices/upload")
+async def upload_invoice(file: UploadFile = File(...)):
+    """Recibe imagen de factura desde el navegador"""
+    contenido = await file.read()
+    resultado = procesar_y_guardar_factura(contenido)
+    return JSONResponse(resultado)
+
+@app.post("/api/invoices/upload-base64")
+async def upload_invoice_base64(data: dict):
+    """Recibe imagen en base64 desde el bot de WhatsApp"""
+    try:
+        imagen_b64 = data.get("imagen", "")
+        contenido = base64.b64decode(imagen_b64)
+        resultado = procesar_y_guardar_factura(contenido)
+        return JSONResponse(resultado)
+    except Exception as e:
+        return JSONResponse({
+            "status": "error",
+            "mensaje": f"❌ Error al procesar: {str(e)}"
+        })
+
 @app.get("/api/invoices")
 async def get_invoices():
     """Obtiene todas las facturas"""
@@ -195,22 +219,18 @@ async def get_stats():
     """Estadísticas para el dashboard"""
     conn = get_db()
     
-    # Total gastado
     cursor = conn.execute("SELECT SUM(total) as total FROM invoices")
     total_gastado = dict(cursor.fetchone())["total"] or 0
     
-    # Total facturas
     cursor = conn.execute("SELECT COUNT(*) as count FROM invoices")
     total_facturas = dict(cursor.fetchone())["count"]
     
-    # Gastos por categoría
     cursor = conn.execute("""
         SELECT categoria, SUM(total) as total, COUNT(*) as count 
         FROM invoices GROUP BY categoria ORDER BY total DESC
     """)
     categorias = [dict(row) for row in cursor.fetchall()]
     
-    # Gastos por mes (últimos 6)
     cursor = conn.execute("""
         SELECT strftime('%Y-%m', fecha) as mes, SUM(total) as total 
         FROM invoices 
@@ -219,7 +239,6 @@ async def get_stats():
     meses = [dict(row) for row in cursor.fetchall()]
     meses.reverse()
     
-    # Top proveedores
     cursor = conn.execute("""
         SELECT proveedor, SUM(total) as total, COUNT(*) as count 
         FROM invoices GROUP BY proveedor ORDER BY total DESC LIMIT 5

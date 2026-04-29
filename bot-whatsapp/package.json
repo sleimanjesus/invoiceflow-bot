@@ -1,0 +1,14 @@
+{
+  "name": "invoiceflow-bot",
+  "version": "1.0.0",
+  "description": "Bot de WhatsApp para InvoiceFlow - Sistema de Facturación Inteligente",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "qr": "node bot.js"
+  },
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.25.0"
+  }
+}
