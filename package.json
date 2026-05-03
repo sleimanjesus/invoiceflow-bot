@@ -1,0 +1,30 @@
+{
+  "name": "invoiceflow",
+  "version": "1.0.0",
+  "description": "",
+  "main": "ecosystem.config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sleimanjuegos-cell/invoiceflow.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/sleimanjuegos-cell/invoiceflow/issues"
+  },
+  "homepage": "https://github.com/sleimanjuegos-cell/invoiceflow#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.1",
+    "better-sqlite3": "^12.9.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.34.7"
+  }
+}

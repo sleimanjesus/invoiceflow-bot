@@ -1,13 +1,28 @@
 {
   "name": "invoiceflow-bot",
-  "version": "1.0.0",
-  "description": "Bot de WhatsApp para InvoiceFlow - Sistema de Facturación Inteligente",
-  "main": "bot.js",
+  "version": "4.0.0",
+  "description": "InvoiceFlow SaaS - Bot Multi-Empresa de WhatsApp (Supabase)",
+  "main": "server.js",
   "scripts": {
-    "start": "node bot.js",
-    "qr": "node bot.js"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "bot:1": "node bot-multi-empresa.js --empresa=1",
+    "bot:2": "node bot-multi-empresa.js --empresa=2",
+    "bot:3": "node bot-multi-empresa.js --empresa=3",
+    "bot:legacy": "node bot-final.js",
+    "manager": "node server.js",
+    "qr": "node bot-multi-empresa.js",
+    "deploy": "pm2 start ../ecosystem.config.js",
+    "logs": "pm2 logs invoiceflow",
+    "stop": "pm2 stop invoiceflow",
+    "restart": "pm2 restart invoiceflow"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.105.1",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-fileupload": "^1.5.2",
+    "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
     "whatsapp-web.js": "^1.25.0"
   }

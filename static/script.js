@@ -7,8 +7,21 @@ const state = {
     invoices: [],
     stats: null,
     alerts: [],
-    charts: {}
+    charts: {},
+    empresaId: null
 };
+
+// Obtener empresa_id de la URL
+const urlParams = new URLSearchParams(window.location.search);
+state.empresaId = urlParams.get('empresa_id') || null;
+
+// Función helper para construir URLs con empresa_id
+function apiUrl(path) {
+    if (state.empresaId) {
+        return `/api/empresas/${state.empresaId}${path}`;
+    }
+    return `/api${path}`;
+}
 
 // ─── Inicialización ───
 document.addEventListener('DOMContentLoaded', () => {
@@ -95,7 +108,7 @@ async function handleFile(file) {
     formData.append('file', file);
     
     try {
-        const res = await fetch('/api/invoices/upload', {
+        const res = await fetch(apiUrl('/invoices/upload'), {
             method: 'POST',
             body: formData
         });
@@ -163,9 +176,9 @@ function showUploadResult(data) {
 async function loadData() {
     try {
         const [statsRes, invoicesRes, alertsRes] = await Promise.all([
-            fetch('/api/invoices/stats'),
-            fetch('/api/invoices'),
-            fetch('/api/alerts')
+            fetch(apiUrl('/invoices/stats')),
+            fetch(apiUrl('/invoices')),
+            fetch(apiUrl('/alerts'))
         ]);
         
         state.stats = await statsRes.json();
@@ -205,7 +218,38 @@ function updateCategoryChart() {
     if (state.charts.category) state.charts.category.destroy();
     
     const colors = ['#00d4aa', '#7c3aed', '#3b82f6', '#f59e0b', '#ef4444', '#ec4899'];
-    const data = state.stats.categorias;
+    const data = state.stats.categorias || [];
+    
+    // Si no hay datos, mostrar gráfico vacío con mensaje
+    if (data.length === 0) {
+        state.charts.category = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Sin datos'],
+                datasets: [{
+                    data: [1],
+                    backgroundColor: ['rgba(255,255,255,0.05)'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: 'rgba(255,255,255,0.3)',
+                            padding: 16,
+                            font: { family: 'Inter', size: 12 }
+                        }
+                    },
+                    tooltip: { enabled: false }
+                }
+            }
+        });
+        return;
+    }
     
     state.charts.category = new Chart(ctx, {
         type: 'doughnut',
@@ -244,7 +288,47 @@ function updateMonthlyChart() {
     
     if (state.charts.monthly) state.charts.monthly.destroy();
     
-    const data = state.stats.meses;
+    const data = state.stats.meses || [];
+    
+    // Si no hay datos, mostrar gráfico vacío
+    if (data.length === 0) {
+        state.charts.monthly = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Sin datos'],
+                datasets: [{
+                    label: 'Gastos',
+                    data: [0],
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    backgroundColor: 'rgba(255,255,255,0.02)',
+                    fill: true,
+                    pointBackgroundColor: 'rgba(255,255,255,0.1)',
+                    pointRadius: 0,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.03)' },
+                        ticks: { color: 'rgba(255,255,255,0.3)', font: { family: 'Inter', size: 11 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.03)' },
+                        ticks: {
+                            color: 'rgba(255,255,255,0.3)',
+                            font: { family: 'JetBrains Mono', size: 11 },
+                            callback: v => '$' + v
+                        }
+                    }
+                }
+            }
+        });
+        return;
+    }
     
     state.charts.monthly = new Chart(ctx, {
         type: 'line',
@@ -437,15 +521,17 @@ async function setBudget() {
     }
     
     try {
-        const formData = new FormData();
-        formData.append('categoria', categoria);
-        formData.append('limite', limite);
-        
-        const res = await fetch('/api/budgets', {
+        const res = await fetch(apiUrl('/budgets'), {
             method: 'POST',
-            body: formData
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ categoria, limite })
         });
         const data = await res.json();
+        
+        if (data.status === 'error') {
+            showToast(data.mensaje, 'error');
+            return;
+        }
         
         showToast(data.mensaje, 'success');
         document.getElementById('budgetLimit').value = '';

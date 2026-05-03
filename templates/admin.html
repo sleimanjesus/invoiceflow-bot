@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InvoiceFlow — Panel de Administración</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0A0A1A;
+            color: #fff;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .bg-grid {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .container { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .logo { font-size: 24px; font-weight: 800; }
+        .header-stats { display: flex; align-items: center; gap: 16px; }
+        .header-stat { text-align: center; }
+        .header-stat .num { font-size: 20px; font-weight: 700; }
+        .header-stat .label { font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 24px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 4px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .tab {
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.4);
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+            font-family: 'Inter', sans-serif;
+        }
+        .tab:hover { color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.03); }
+        .tab.active {
+            color: #fff;
+            background: rgba(255,255,255,0.08);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .toolbar input, .toolbar select {
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.03);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .toolbar input:focus, .toolbar select:focus { border-color: rgba(255,255,255,0.3); }
+        .toolbar input { flex: 1; min-width: 200px; }
+        .toolbar select { min-width: 140px; }
+        .toolbar input::placeholder { color: rgba(255,255,255,0.2); }
+        
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn-primary { background: rgba(0, 245, 255, 0.15); color: #00F5FF; }
+        .btn-primary:hover { background: rgba(0, 245, 255, 0.25); }
+        .btn-success { background: rgba(0, 255, 100, 0.15); color: #00FF64; }
+        .btn-success:hover { background: rgba(0, 255, 100, 0.25); }
+        .btn-danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+        .btn-cancel { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.5); }
+        .btn-cancel:hover { background: rgba(255,255,255,0.1); }
+        .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+        .btn-warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .btn-warning:hover { background: rgba(245, 158, 11, 0.25); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        /* Table */
+        .table-container {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            overflow: hidden;
+            overflow-x: auto;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.02);
+        }
+        td {
+            padding: 12px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+        .actions { display: flex; gap: 6px; }
+        
+        /* Badges */
+        .color-dot {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        .rubro-badge {
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            background: rgba(255,255,255,0.05);
+        }
+        .status-badge {
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-badge.online { background: rgba(0,255,100,0.15); color: #00FF64; }
+        .status-badge.offline { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .status-badge.pending { background: rgba(245,158,11,0.15); color: #f59e0b; }
+        .status-badge.starting { background: rgba(59,130,246,0.15); color: #3b82f6; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255,255,255,0.3);
+        }
+        .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+        .empty-state p { font-size: 14px; }
+        
+        /* Detail panel */
+        .detail-panel {
+            display: none;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 20px;
+        }
+        .detail-panel.active { display: block; }
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .detail-header h3 { font-size: 18px; }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .detail-field label {
+            display: block;
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .detail-field span {
+            font-size: 14px;
+            color: rgba(255,255,255,0.9);
+        }
+        
+        /* Clientes sub-table */
+        .clientes-table { margin-top: 16px; }
+        .clientes-table h4 { font-size: 14px; color: rgba(255,255,255,0.5); margin-bottom: 12px; }
+        .clientes-table table th { font-size: 10px; padding: 8px 12px; }
+        .clientes-table table td { font-size: 12px; padding: 8px 12px; }
+        
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #1A1A2E;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 32px;
+            width: 90%;
+            max-width: 520px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal h2 { font-size: 20px; margin-bottom: 20px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.03);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: rgba(255,255,255,0.3);
+        }
+        .form-group textarea { min-height: 80px; resize: vertical; }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        
+        /* Color grid */
+        .color-grid {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .color-option {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #fff;
+        }
+        .color-option:hover { transform: scale(1.1); }
+        .color-option.selected { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.2); }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 2000;
+            backdrop-filter: blur(12px);
+            animation: slideIn 0.3s ease;
+        }
+        .toast-success { background: rgba(0,255,100,0.15); border: 1px solid rgba(0,255,100,0.3); color: #00FF64; }
+        .toast-error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+        .toast-info { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; }
+        @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Comandos table */
+        .config-preview {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .comando-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .comando-badge.simple { background: rgba(59,130,246,0.15); color: #3b82f6; }
+        .comando-badge.formulario { background: rgba(245,158,11,0.15); color: #f59e0b; }
+        
+        @media (max-width: 768px) {
+            .form-row { grid-template-columns: 1fr; }
+            .detail-grid { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 12px; }
+            .header-stats { flex-wrap: wrap; justify-content: center; }
+            .tabs { flex-wrap: wrap; }
+            .tab { flex: 1; text-align: center; padding: 10px 12px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">✦ InvoiceFlow Admin</div>
+            <div class="header-stats">
+                <div class="header-stat">
+                    <div class="num" id="totalEmpresas">0</div>
+                    <div class="label">Empresas</div>
+                </div>
+                <div class="header-stat">
+                    <div class="num" id="totalActivas">0</div>
+                    <div class="label">Activas</div>
+                </div>
+                <div class="header-stat">
+                    <div class="num" id="totalBotsOnline">0</div>
+                    <div class="label">Bots Online</div>
+                </div>
+                <button class="btn btn-primary" onclick="openCreateModal()">+ Nueva Empresa</button>
+            </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('empresas', this)">🏢 Empresas</button>
+            <button class="tab" onclick="switchTab('bots', this)">🤖 Bots</button>
+            <button class="tab" onclick="switchTab('comandos', this)">⚙️ Comandos</button>
+        </div>
+        
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- TAB 1: EMPRESAS -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div class="tab-content active" id="tab-empresas">
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <input type="text" id="searchInput" placeholder="🔍 Buscar empresa..." oninput="loadEmpresas()">
+                <select id="rubroFilter" onchange="loadEmpresas()">
+                    <option value="">Todos los rubros</option>
+                    <option value="general">🏢 General</option>
+                    <option value="construccion">🏗️ Construcción</option>
+                    <option value="tienda">🏪 Tienda</option>
+                    <option value="salud">🏥 Salud</option>
+                    <option value="logistica">📦 Logística</option>
+                    <option value="restaurante">🍽️ Restaurante</option>
+                </select>
+                <select id="ordenFilter" onchange="loadEmpresas()">
+                    <option value="nombre">A-Z ↕</option>
+                    <option value="nombre_desc">Z-A ↕</option>
+                    <option value="rubro">Por rubro</option>
+                    <option value="fecha">Más recientes</option>
+                    <option value="fecha_asc">Más antiguas</option>
+                    <option value="color">Por color</option>
+                </select>
+                <select id="estadoFilter" onchange="loadEmpresas()">
+                    <option value="">Todos los estados</option>
+                    <option value="1">Activas</option>
+                    <option value="0">Inactivas</option>
+                </select>
+            </div>
+            
+            <!-- Tabla -->
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Color</th>
+                            <th>Empresa</th>
+                            <th>Rubro</th>
+                            <th>Nombre del Bot</th>
+                            <th>Estado Bot</th>
+                            <th>Facturas</th>
+                            <th>Registro</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="empresasBody">
+                        <tr><td colspan="8"><div class="empty-state"><div class="icon">📊</div><p>Cargando empresas...</p></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Detail Panel -->
+            <div class="detail-panel" id="detailPanel">
+                <div class="detail-header">
+                    <h3 id="detailTitle">Detalle de Empresa</h3>
+                    <button class="btn btn-sm btn-cancel" onclick="closeDetail()">✕ Cerrar</button>
+                </div>
+                <div class="detail-grid" id="detailContent"></div>
+                <div class="clientes-table" id="clientesSection">
+                    <h4>👥 Clientes / Contactos</h4>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Cédula</th>
+                                    <th>Teléfono</th>
+                                    <th>Email</th>
+                                    <th>Cargo</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientesBody"></tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <button class="btn btn-sm btn-success" onclick="openAddCliente()">+ Agregar Cliente</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- TAB 2: BOTS -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div class="tab-content" id="tab-bots">
+            <div class="toolbar">
+                <button class="btn btn-success" onclick="startAllBots()">🚀 Iniciar Todos</button>
+                <button class="btn btn-primary" onclick="loadBots()">🔄 Refrescar</button>
+                <span style="color:rgba(255,255,255,0.3);font-size:13px;align-self:center;">
+                    Auto-refresh cada 5s
+                </span>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Color</th>
+                            <th>Empresa</th>
+                            <th>Bot</th>
+                            <th>Estado</th>
+                            <th>Última Actividad</th>
+                            <th>Formularios</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="botsBody">
+                        <tr><td colspan="7"><div class="empty-state"><div class="icon">🤖</div><p>Cargando estado de bots...</p></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- TAB 3: COMANDOS -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <div class="tab-content" id="tab-comandos">
+            <div class="toolbar">
+                <select id="comandoEmpresaFilter" onchange="loadComandos()">
+                    <option value="">Selecciona una empresa...</option>
+                </select>
+                <button class="btn btn-success" onclick="openAddComando()" id="btnAddComando" disabled>+ Añadir Comando</button>
+                <button class="btn btn-primary" onclick="loadComandos()">🔄 Refrescar</button>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Comando</th>
+                            <th>Descripción</th>
+                            <th>Tipo</th>
+                            <th>Config</th>
+                            <th>Activo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comandosBody">
+                        <tr><td colspan="6"><div class="empty-state"><div class="icon">⚙️</div><p>Selecciona una empresa para ver sus comandos personalizados</p></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- MODAL: Crear/Editar Empresa -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="createModal">
+        <div class="modal">
+            <h2 id="modalTitle">Nueva Empresa</h2>
+            <input type="hidden" id="editEmpresaId">
+            
+            <div class="form-group">
+                <label>Nombre de la Empresa *</label>
+                <input type="text" id="empresaNombre" placeholder="Ej: Constructora Los Andes C.A.">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Rubro / Plantilla</label>
+                    <select id="empresaRubro">
+                        <option value="general">🏢 General</option>
+                        <option value="construccion">🏗️ Construcción</option>
+                        <option value="tienda">🏪 Tienda / Comercio</option>
+                        <option value="salud">🏥 Clínica / Salud</option>
+                        <option value="logistica">📦 Logística</option>
+                        <option value="restaurante">🍽️ Restaurante</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nombre del Bot</label>
+                    <input type="text" id="botNombre" placeholder="Ej: 🏗️ Constructora Bot">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Color de Identificación</label>
+                <div class="color-grid" id="colorGrid"></div>
+            </div>
+            
+            <div class="form-group">
+                <label>Notas</label>
+                <textarea id="empresaNotas" placeholder="Información adicional sobre la empresa..."></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeModal('createModal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveEmpresa()">💾 Guardar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- MODAL: Agregar Cliente -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="clienteModal">
+        <div class="modal">
+            <h2>Agregar Cliente</h2>
+            <input type="hidden" id="clienteEmpresaId">
+            <input type="hidden" id="editClienteId">
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nombre *</label>
+                    <input type="text" id="clienteNombre" placeholder="Nombre completo">
+                </div>
+                <div class="form-group">
+                    <label>Cédula</label>
+                    <input type="text" id="clienteCedula" placeholder="V-12345678">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Teléfono *</label>
+                    <input type="text" id="clienteTelefono" placeholder="+58 412-1234567">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="clienteEmail" placeholder="correo@ejemplo.com">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Cargo</label>
+                <input type="text" id="clienteCargo" placeholder="Ej: Gerente General">
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeModal('clienteModal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveCliente()">💾 Guardar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- MODAL: Añadir/Editar Comando -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="comandoModal">
+        <div class="modal">
+            <h2 id="comandoModalTitle">Añadir Comando Personalizado</h2>
+            <input type="hidden" id="editComandoId">
+            <input type="hidden" id="comandoEmpresaId">
+            
+            <div class="form-group">
+                <label>Comando *</label>
+                <input type="text" id="comandoNombre" placeholder="Ej: /horario, /precios, /contacto">
+            </div>
+            
+            <div class="form-group">
+                <label>Descripción</label>
+                <input type="text" id="comandoDescripcion" placeholder="Ej: Consultar horario de atención">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tipo *</label>
+                    <select id="comandoTipo" onchange="toggleComandoConfig()">
+                        <option value="simple">📝 Simple (respuesta fija)</option>
+                        <option value="formulario">📋 Formulario (varios campos)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Config para tipo SIMPLE -->
+            <div class="form-group" id="configSimple">
+                <label>Mensaje de Respuesta *</label>
+                <textarea id="comandoMensaje" placeholder="Ej: Nuestro horario es de 9am a 6pm, de lunes a viernes."></textarea>
+            </div>
+            
+            <!-- Config para tipo FORMULARIO -->
+            <div id="configFormulario" style="display:none;">
+                <div class="form-group">
+                    <label>Mensaje Final (al completar)</label>
+                    <textarea id="comandoMensajeFinal" placeholder="Ej: ✅ Gracias por tu información, te contactaremos pronto."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Campos del Formulario</label>
+                    <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:8px;">
+                        Escribe un campo por línea. Ejemplo:
+                    </p>
+                    <textarea id="comandoCampos" placeholder="Nombre completo&#10;Teléfono&#10;Correo electrónico&#10;Mensaje" rows="5"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeModal('comandoModal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveComando()">💾 Guardar</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ─── CONSTANTES ──────────────────────────────────────────
+        const BOTS_API = window.location.port === '3000' ? '' : 'http://localhost:3000';
+        const COLORES = [
+            {nombre: "Verde Menta", hex: "#00d4aa"},
+            {nombre: "Púrpura", hex: "#7c3aed"},
+            {nombre: "Azul", hex: "#3b82f6"},
+            {nombre: "Ámbar", hex: "#f59e0b"},
+            {nombre: "Rosa", hex: "#ec4899"},
+            {nombre: "Rojo", hex: "#ef4444"},
+            {nombre: "Cian", hex: "#06b6d4"},
+            {nombre: "Naranja", hex: "#f97316"},
+            {nombre: "Verde Lima", hex: "#84cc16"},
+            {nombre: "Índigo", hex: "#6366f1"},
+        ];
+        
+        let selectedColorIdx = 0;
+        let selectedEmpresaId = null;
+        let empresasCache = [];
+        
+        // ─── INIT ────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            initColorGrid();
+            loadEmpresas();
+            loadEmpresasForSelect();
+        });
+        
+        function initColorGrid() {
+            const grid = document.getElementById('colorGrid');
+            grid.innerHTML = COLORES.map((c, i) => `
+                <div class="color-option ${i === 0 ? 'selected' : ''}" 
+                     style="background: ${c.hex}"
+                     onclick="selectColor(${i})"
+                     title="${c.nombre}">
+                    ${i === 0 ? '✓' : ''}
+                </div>
+            `).join('');
+        }
+        
+        function selectColor(idx) {
+            selectedColorIdx = idx;
+            document.querySelectorAll('.color-option').forEach((el, i) => {
+                el.classList.toggle('selected', i === idx);
+                el.textContent = i === idx ? '✓' : '';
+            });
+        }
+        
+        // ─── TABS ────────────────────────────────────────────────
+        function switchTab(tabName, btn) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+            
+            if (tabName === 'bots') loadBots();
+            if (tabName === 'comandos') loadComandos();
+        }
+        
+        // ═══════════════════════════════════════════════════════════
+        //  TAB 1: EMPRESAS
+        // ═══════════════════════════════════════════════════════════
+        
+        async function loadEmpresas() {
+            const search = document.getElementById('searchInput').value;
+            const rubro = document.getElementById('rubroFilter').value;
+            const orden = document.getElementById('ordenFilter').value;
+            const activo = document.getElementById('estadoFilter').value;
+            
+            let url = '/api/admin/empresas?orden=' + orden;
+            if (search) url += '&search=' + encodeURIComponent(search);
+            if (rubro) url += '&rubro=' + rubro;
+            if (activo !== '') url += '&activo=' + activo;
+            
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                empresasCache = data.empresas || [];
+                renderEmpresas(data);
+            } catch (err) {
+                showToast('Error al cargar empresas', 'error');
+            }
+        }
+        
+        function renderEmpresas(data) {
+            const body = document.getElementById('empresasBody');
+            const empresas = data.empresas || [];
+            
+            document.getElementById('totalEmpresas').textContent = data.total || empresas.length;
+            document.getElementById('totalActivas').textContent = data.activas || empresas.filter(e => e.activo).length;
+            
+            if (empresas.length === 0) {
+                body.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📭</div><p>No se encontraron empresas</p></div></td></tr>`;
+                return;
+            }
+            
+            body.innerHTML = empresas.map(e => {
+                const color = e.color || '#00d4aa';
+                const activa = e.activo !== false;
+                const botStatus = e.bot_estado || 'desconocido';
+                const statusClass = botStatus === 'conectado' ? 'online' : botStatus === 'conectando' ? 'starting' : 'offline';
+                const statusText = botStatus === 'conectado' ? '🟢 Online' : botStatus === 'conectando' ? '🔄 Iniciando' : '🔴 Offline';
+                
+                return `
+                    <tr onclick="showDetail(${e.id})" style="cursor:pointer;">
+                        <td><span class="color-dot" style="background:${color}"></span></td>
+                        <td><strong>${e.nombre}</strong></td>
+                        <td><span class="rubro-badge">${e.rubro || '—'}</span></td>
+                        <td>${e.nombre_bot || '—'}</td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td>${e.total_facturas || 0}</td>
+                        <td style="font-size:12px;color:rgba(255,255,255,0.4);">${e.fecha_registro ? new Date(e.fecha_registro).toLocaleDateString() : '—'}</td>
+                        <td>
+                            <div class="actions">
+                                <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openEditModal(${e.id})">✏️</button>
+                                <button class="btn btn-sm ${activa ? 'btn-warning' : 'btn-success'}" onclick="event.stopPropagation();toggleEmpresa(${e.id}, ${!activa})">
+                                    ${activa ? '⏸️' : '▶️'}
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteEmpresa(${e.id})">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        // ─── CRUD EMPRESAS ───────────────────────────────────────
+        
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Nueva Empresa';
+            document.getElementById('editEmpresaId').value = '';
+            document.getElementById('empresaNombre').value = '';
+            document.getElementById('empresaRubro').value = 'general';
+            document.getElementById('botNombre').value = '';
+            document.getElementById('empresaNotas').value = '';
+            selectColor(0);
+            openModal('createModal');
+        }
+        
+        function openEditModal(id) {
+            const empresa = empresasCache.find(e => e.id === id);
+            if (!empresa) return;
+            
+            document.getElementById('modalTitle').textContent = 'Editar Empresa';
+            document.getElementById('editEmpresaId').value = id;
+            document.getElementById('empresaNombre').value = empresa.nombre || '';
+            document.getElementById('empresaRubro').value = empresa.rubro || 'general';
+            document.getElementById('botNombre').value = empresa.nombre_bot || '';
+            document.getElementById('empresaNotas').value = empresa.notas || '';
+            
+            const colorIdx = COLORES.findIndex(c => c.hex === empresa.color);
+            selectColor(colorIdx >= 0 ? colorIdx : 0);
+            
+            openModal('createModal');
+        }
+        
+        async function saveEmpresa() {
+            const id = document.getElementById('editEmpresaId').value;
+            const data = {
+                nombre: document.getElementById('empresaNombre').value.trim(),
+                rubro: document.getElementById('empresaRubro').value,
+                nombre_bot: document.getElementById('botNombre').value.trim(),
+                color: COLORES[selectedColorIdx].hex,
+                notas: document.getElementById('empresaNotas').value.trim()
+            };
+            
+            if (!data.nombre) {
+                showToast('El nombre de la empresa es obligatorio', 'error');
+                return;
+            }
+            
+            try {
+                const url = id ? `/api/admin/empresas/${id}` : '/api/admin/empresas';
+                const method = id ? 'PUT' : 'POST';
+                
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!res.ok) throw new Error('Error al guardar');
+                
+                showToast(id ? '✅ Empresa actualizada' : '✅ Empresa creada', 'success');
+                closeModal('createModal');
+                loadEmpresas();
+            } catch (err) {
+                showToast('Error al guardar empresa', 'error');
+            }
+        }
+        
+        async function toggleEmpresa(id, activar) {
+            try {
+                const res = await fetch(`/api/admin/empresas/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ activo: activar })
+                });
+                if (!res.ok) throw new Error();
+                showToast(activar ? '✅ Empresa activada' : '⏸️ Empresa desactivada', 'success');
+                loadEmpresas();
+            } catch (err) {
+                showToast('Error al cambiar estado', 'error');
+            }
+        }
+        
+        async function deleteEmpresa(id) {
+            if (!confirm('¿Eliminar esta empresa? Esta acción no se puede deshacer.')) return;
+            try {
+                const res = await fetch(`/api/admin/empresas/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error();
+                showToast('🗑️ Empresa eliminada', 'success');
+                loadEmpresas();
+            } catch (err) {
+                showToast('Error al eliminar empresa', 'error');
+            }
+        }
+        
+        // ─── DETALLE DE EMPRESA ──────────────────────────────────
+        
+        async function showDetail(id) {
+            selectedEmpresaId = id;
+            const panel = document.getElementById('detailPanel');
+            const title = document.getElementById('detailTitle');
+            const content = document.getElementById('detailContent');
+            const clientesBody = document.getElementById('clientesBody');
+            
+            try {
+                const res = await fetch(`/api/admin/empresas/${id}`);
+                const e = await res.json();
+                
+                title.textContent = `📋 ${e.nombre}`;
+                content.innerHTML = `
+                    <div class="detail-field"><label>Rubro</label><span>${e.rubro || '—'}</span></div>
+                    <div class="detail-field"><label>Nombre del Bot</label><span>${e.nombre_bot || '—'}</span></div>
+                    <div class="detail-field"><label>Color</label><span><span class="color-dot" style="background:${e.color || '#00d4aa'}"></span> ${e.color || '—'}</span></div>
+                    <div class="detail-field"><label>Estado</label><span>${e.activo ? '✅ Activa' : '❌ Inactiva'}</span></div>
+                    <div class="detail-field"><label>Facturas</label><span>${e.total_facturas || 0}</span></div>
+                    <div class="detail-field"><label>Registro</label><span>${e.fecha_registro ? new Date(e.fecha_registro).toLocaleDateString() : '—'}</span></div>
+                    <div class="detail-field"><label>Notas</label><span>${e.notas || '—'}</span></div>
+                `;
+                
+                // Clientes
+                if (e.clientes && e.clientes.length > 0) {
+                    clientesBody.innerHTML = e.clientes.map(c => `
+                        <tr>
+                            <td>${c.nombre}</td>
+                            <td>${c.cedula || '—'}</td>
+                            <td>${c.telefono || '—'}</td>
+                            <td>${c.email || '—'}</td>
+                            <td>${c.cargo || '—'}</td>
+                            <td>
+                                <div class="actions">
+                                    <button class="btn btn-sm btn-primary" onclick="editCliente(${c.id})">✏️</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteCliente(${c.id})">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    clientesBody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p>No hay clientes registrados</p></div></td></tr>`;
+                }
+                
+                panel.classList.add('active');
+            } catch (err) {
+                showToast('Error al cargar detalle', 'error');
+            }
+        }
+        
+        function closeDetail() {
+            document.getElementById('detailPanel').classList.remove('active');
+        }
+        
+        // ─── CLIENTES ────────────────────────────────────────────
+        
+        function openAddCliente() {
+            document.getElementById('clienteEmpresaId').value = selectedEmpresaId;
+            document.getElementById('editClienteId').value = '';
+            document.getElementById('clienteNombre').value = '';
+            document.getElementById('clienteCedula').value = '';
+            document.getElementById('clienteTelefono').value = '';
+            document.getElementById('clienteEmail').value = '';
+            document.getElementById('clienteCargo').value = '';
+            openModal('clienteModal');
+        }
+        
+        function editCliente(id) {
+            // Recargar detalle para obtener datos actualizados
+            showDetail(selectedEmpresaId).then(() => {
+                // Buscar cliente en el DOM (simplificado)
+                document.getElementById('clienteEmpresaId').value = selectedEmpresaId;
+                document.getElementById('editClienteId').value = id;
+                openModal('clienteModal');
+            });
+        }
+        
+        async function saveCliente() {
+            const empresaId = document.getElementById('clienteEmpresaId').value;
+            const editId = document.getElementById('editClienteId').value;
+            const data = {
+                nombre: document.getElementById('clienteNombre').value.trim(),
+                cedula: document.getElementById('clienteCedula').value.trim(),
+                telefono: document.getElementById('clienteTelefono').value.trim(),
+                email: document.getElementById('clienteEmail').value.trim(),
+                cargo: document.getElementById('clienteCargo').value.trim()
+            };
+            
+            if (!data.nombre || !data.telefono) {
+                showToast('Nombre y teléfono son obligatorios', 'error');
+                return;
+            }
+            
+            try {
+                const url = editId 
+                    ? `/api/admin/empresas/${empresaId}/clientes/${editId}`
+                    : `/api/admin/empresas/${empresaId}/clientes`;
+                const method = editId ? 'PUT' : 'POST';
+                
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!res.ok) throw new Error();
+                showToast(editId ? '✅ Cliente actualizado' : '✅ Cliente agregado', 'success');
+                closeModal('clienteModal');
+                showDetail(empresaId);
+            } catch (err) {
+                showToast('Error al guardar cliente', 'error');
+            }
+        }
+        
+        async function deleteCliente(id) {
+            if (!confirm('¿Eliminar este cliente?')) return;
+            try {
+                const res = await fetch(`/api/admin/empresas/${selectedEmpresaId}/clientes/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error();
+                showToast('🗑️ Cliente eliminado', 'success');
+                showDetail(selectedEmpresaId);
+            } catch (err) {
+                showToast('Error al eliminar cliente', 'error');
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════
+        //  TAB 2: BOTS
+        // ═══════════════════════════════════════════════════════════
+        
+        let botsInterval = null;
+        
+        async function loadBots() {
+            try {
+                const res = await fetch(BOTS_API + '/api/bots/status');
+                const bots = await res.json();
+                renderBots(bots);
+            } catch (err) {
+                document.getElementById('botsBody').innerHTML = `
+                    <tr><td colspan="7"><div class="empty-state"><div class="icon">⚠️</div><p>Servidor de bots no disponible (puerto 3000)</p></div></td></tr>
+                `;
+            }
+        }
+        
+        function renderBots(bots) {
+            const body = document.getElementById('botsBody');
+            const entries = Object.entries(bots);
+            
+            if (entries.length === 0) {
+                body.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🤖</div><p>No hay bots configurados</p></div></td></tr>`;
+                return;
+            }
+            
+            let onlineCount = 0;
+            
+            body.innerHTML = entries.map(([id, bot]) => {
+                const statusClass = bot.estado === 'conectado' ? 'online' : 
+                                   bot.estado === 'conectando' || bot.estado === 'esperando_escaneo' ? 'starting' : 'offline';
+                const statusText = bot.estado === 'conectado' ? '🟢 Conectado' :
+                                   bot.estado === 'conectando' ? '🔄 Conectando...' :
+                                   bot.estado === 'esperando_escaneo' ? '📱 Escanea QR' :
+                                   bot.estado === 'inactivo' ? '❌ Inactivo' : '🔴 Desconectado';
+                
+                if (bot.estado === 'conectado') onlineCount++;
+                
+                const empresa = bot.empresa || { nombre: `Empresa #${id}`, nombre_bot: '—', rubro: '—', color: '#666' };
+                const color = empresa.color || '#666';
+                const isStarting = bot.estado === 'conectando' || bot.estado === 'esperando_escaneo';
+                
+                return `
+                    <tr>
+                        <td><span class="color-dot" style="background:${color}"></span></td>
+                        <td><strong>${empresa.nombre}</strong></td>
+                        <td>${empresa.nombre_bot || '—'}</td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td style="font-size:12px;color:rgba(255,255,255,0.4);">${bot.ultima_actividad ? new Date(bot.ultima_actividad).toLocaleString() : '—'}</td>
+                        <td>${bot.formularios_activos || 0}</td>
+                        <td>
+                            <div class="actions">
+                                ${bot.estado !== 'conectado' && !isStarting 
+                                    ? `<button class="btn btn-sm btn-success" onclick="startBot(${id})">▶ Iniciar</button>`
+                                    : ''}
+                                ${bot.estado === 'conectado' || bot.estado === 'esperando_escaneo'
+                                    ? `<button class="btn btn-sm btn-danger" onclick="stopBot(${id})">⏹ Detener</button>`
+                                    : ''}
+                                ${isStarting
+                                    ? `<button class="btn btn-sm btn-primary" disabled><span class="spinner"></span>Iniciando...</button>`
+                                    : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            document.getElementById('totalBotsOnline').textContent = onlineCount;
+        }
+        
+        async function startBot(id) {
+            const btn = event?.target;
+            if (btn) btn.disabled = true;
+            
+            try {
+                const res = await fetch(BOTS_API + `/api/bots/start/${id}`, { method: 'POST' });
+                if (!res.ok) throw new Error();
+                showToast(`🚀 Iniciando bot #${id}...`, 'info');
+                setTimeout(loadBots, 2000);
+            } catch (err) {
+                showToast('Error al iniciar bot', 'error');
+                if (btn) btn.disabled = false;
+            }
+        }
+        
+        async function stopBot(id) {
+            try {
+                const res = await fetch(BOTS_API + `/api/bots/stop/${id}`, { method: 'POST' });
+                if (!res.ok) throw new Error();
+                showToast(`⏹ Bot #${id} detenido`, 'success');
+                loadBots();
+            } catch (err) {
+                showToast('Error al detener bot', 'error');
+            }
+        }
+        
+        async function startAllBots() {
+            try {
+                const res = await fetch(BOTS_API + '/api/bots/start-all', { method: 'POST' });
+                if (!res.ok) throw new Error();
+                showToast('🚀 Iniciando todos los bots...', 'info');
+                setTimeout(loadBots, 3000);
+            } catch (err) {
+                showToast('Error al iniciar bots', 'error');
+            }
+        }
+        
+        // Auto-refresh bots cada 5s cuando la pestaña está visible
+        document.addEventListener('visibilitychange', () => {
+            if (document.getElementById('tab-bots').classList.contains('active')) {
+                if (!document.hidden) {
+                    botsInterval = setInterval(loadBots, 5000);
+                } else {
+                    clearInterval(botsInterval);
+                }
+            }
+        });
+        
+        // ═══════════════════════════════════════════════════════════
+        //  TAB 3: COMANDOS PERSONALIZADOS
+        // ═══════════════════════════════════════════════════════════
+        
+        async function loadEmpresasForSelect() {
+            try {
+                const res = await fetch('/api/admin/empresas');
+                const data = await res.json();
+                const select = document.getElementById('comandoEmpresaFilter');
+                const empresas = data.empresas || [];
+                
+                select.innerHTML = `<option value="">Selecciona una empresa...</option>` +
+                    empresas.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('');
+            } catch (err) {
+                console.error('Error cargando empresas para select:', err);
+            }
+        }
+        
+        async function loadComandos() {
+            const empresaId = document.getElementById('comandoEmpresaFilter').value;
+            const body = document.getElementById('comandosBody');
+            const btnAdd = document.getElementById('btnAddComando');
+            
+            if (!empresaId) {
+                body.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">⚙️</div><p>Selecciona una empresa para ver sus comandos personalizados</p></div></td></tr>`;
+                btnAdd.disabled = true;
+                return;
+            }
+            
+            btnAdd.disabled = false;
+            
+            try {
+                const res = await fetch(BOTS_API + `/api/comandos/${empresaId}`);
+                const comandos = await res.json();
+                const lista = Array.isArray(comandos) ? comandos : (comandos.comandos || []);
+                
+                if (lista.length === 0) {
+                    body.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">📭</div><p>No hay comandos personalizados para esta empresa</p></div></td></tr>`;
+                    return;
+                }
+                
+                body.innerHTML = lista.map(c => {
+                    const tipo = c.tipo || 'simple';
+                    const activo = c.activo !== false;
+                    let configPreview = '';
+                    
+                    if (tipo === 'simple') {
+                        configPreview = c.config?.mensaje ? c.config.mensaje.substring(0, 60) + (c.config.mensaje.length > 60 ? '...' : '') : '—';
+                    } else if (tipo === 'formulario') {
+                        const campos = c.config?.campos || [];
+                        configPreview = `📋 ${campos.length} campos: ${campos.join(', ').substring(0, 50)}...`;
+                    }
+                    
+                    return `
+                        <tr>
+                            <td><code style="background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:4px;">${c.comando}</code></td>
+                            <td>${c.descripcion || '—'}</td>
+                            <td><span class="comando-badge ${tipo}">${tipo === 'simple' ? '📝 Simple' : '📋 Formulario'}</span></td>
+                            <td><div class="config-preview" title="${configPreview.replace(/"/g, '"')}">${configPreview}</div></td>
+                            <td>${activo ? '✅' : '❌'}</td>
+                            <td>
+                                <div class="actions">
+                                    <button class="btn btn-sm btn-primary" onclick="editComando(${c.id})">✏️</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteComando(${c.id})">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                body.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">⚠️</div><p>Error al cargar comandos. Asegúrate de que el servidor de bots (puerto 3000) esté corriendo.</p></div></td></tr>`;
+            }
+        }
+        
+        function openAddComando() {
+            const empresaId = document.getElementById('comandoEmpresaFilter').value;
+            if (!empresaId) {
+                showToast('Selecciona una empresa primero', 'error');
+                return;
+            }
+            
+            document.getElementById('comandoModalTitle').textContent = 'Añadir Comando Personalizado';
+            document.getElementById('editComandoId').value = '';
+            document.getElementById('comandoEmpresaId').value = empresaId;
+            document.getElementById('comandoNombre').value = '';
+            document.getElementById('comandoDescripcion').value = '';
+            document.getElementById('comandoTipo').value = 'simple';
+            document.getElementById('comandoMensaje').value = '';
+            document.getElementById('comandoMensajeFinal').value = '';
+            document.getElementById('comandoCampos').value = '';
+            toggleComandoConfig();
+            openModal('comandoModal');
+        }
+        
+        function editComando(id) {
+            // Recargar comandos y abrir modal para editar
+            const empresaId = document.getElementById('comandoEmpresaFilter').value;
+            document.getElementById('comandoModalTitle').textContent = 'Editar Comando';
+            document.getElementById('editComandoId').value = id;
+            document.getElementById('comandoEmpresaId').value = empresaId;
+            openModal('comandoModal');
+            showToast('Función de edición completa próximamente', 'info');
+        }
+        
+        function toggleComandoConfig() {
+            const tipo = document.getElementById('comandoTipo').value;
+            document.getElementById('configSimple').style.display = tipo === 'simple' ? 'block' : 'none';
+            document.getElementById('configFormulario').style.display = tipo === 'formulario' ? 'block' : 'none';
+        }
+        
+        async function saveComando() {
+            const editId = document.getElementById('editComandoId').value;
+            const empresaId = document.getElementById('comandoEmpresaId').value;
+            const comando = document.getElementById('comandoNombre').value.trim();
+            const descripcion = document.getElementById('comandoDescripcion').value.trim();
+            const tipo = document.getElementById('comandoTipo').value;
+            
+            if (!comando) {
+                showToast('El nombre del comando es obligatorio', 'error');
+                return;
+            }
+            
+            let config = {};
+            if (tipo === 'simple') {
+                const mensaje = document.getElementById('comandoMensaje').value.trim();
+                if (!mensaje) {
+                    showToast('El mensaje de respuesta es obligatorio para comandos simples', 'error');
+                    return;
+                }
+                config = { mensaje };
+            } else if (tipo === 'formulario') {
+                const mensajeFinal = document.getElementById('comandoMensajeFinal').value.trim();
+                const campos = document.getElementById('comandoCampos').value
+                    .split('\n')
+                    .map(c => c.trim())
+                    .filter(c => c.length > 0);
+                
+                if (campos.length === 0) {
+                    showToast('Debes definir al menos un campo para el formulario', 'error');
+                    return;
+                }
+                
+                config = {
+                    mensaje_final: mensajeFinal || '✅ Gracias por tu información.',
+                    campos
+                };
+            }
+            
+            try {
+                const res = await fetch(BOTS_API + '/api/comandos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        empresa_id: parseInt(empresaId),
+                        comando,
+                        descripcion,
+                        tipo,
+                        config
+                    })
+                });
+                
+                if (!res.ok) throw new Error();
+                showToast('✅ Comando creado exitosamente', 'success');
+                closeModal('comandoModal');
+                loadComandos();
+            } catch (err) {
+                showToast('Error al guardar comando', 'error');
+            }
+        }
+        
+        async function deleteComando(id) {
+            if (!confirm('¿Eliminar este comando personalizado?')) return;
+            const empresaId = document.getElementById('comandoEmpresaFilter').value;
+            
+            try {
+                const res = await fetch(BOTS_API + `/api/comandos/${id}?empresa_id=${empresaId}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error();
+                showToast('🗑️ Comando eliminado', 'success');
+                loadComandos();
+            } catch (err) {
+                showToast('Error al eliminar comando', 'error');
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════
+        //  UTILIDADES
+        // ═══════════════════════════════════════════════════════════
+        
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+        
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+        
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
